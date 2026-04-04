@@ -180,26 +180,29 @@ export default function MigrationDashboard() {
 						</CardHeader>
 						<CardBody>
 							<SelectControl
-								label={__('Conflict Strategy', 'vmfa-migrate')}
+								label={__(
+									'If a folder with the same name already exists',
+									'vmfa-migrate'
+								)}
 								value={conflictStrategy}
 								options={[
 									{
 										label: __(
-											'Skip — reuse existing VMF folder',
+											'Skip — reuse the existing folder and assign media to it',
 											'vmfa-migrate'
 										),
 										value: 'skip',
 									},
 									{
 										label: __(
-											'Merge — reuse and log',
+											'Merge — reuse the existing folder, assign media, and log each reuse',
 											'vmfa-migrate'
 										),
 										value: 'merge',
 									},
 									{
 										label: __(
-											'Overwrite — create with deduplicated name',
+											'Rename — create a new folder with the source plugin name appended',
 											'vmfa-migrate'
 										),
 										value: 'overwrite',
@@ -207,7 +210,7 @@ export default function MigrationDashboard() {
 								]}
 								onChange={setConflictStrategy}
 								help={__(
-									'How to handle folders that already exist in Virtual Media Folders.',
+									'Choose what happens when a source folder has the same name and parent as an existing Virtual Media Folder.',
 									'vmfa-migrate'
 								)}
 							/>

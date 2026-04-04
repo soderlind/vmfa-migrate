@@ -4,7 +4,7 @@ Tags: media, folders, migration, import
 Requires at least: 6.8
 Tested up to: 6.8
 Requires PHP: 8.3
-Stable tag: 0.1.0
+Stable tag: 0.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -34,6 +34,9 @@ Works even after the source plugin has been deactivated — data is read directl
 4. Go to Media → Folder Settings → Migration.
 
 == Changelog ==
+
+= 0.2.0 =
+* Improved: Conflict strategy selector — clearer label, descriptive option text, and help text explaining each strategy.
 
 = 0.1.0 =
 * Initial release.
