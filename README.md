@@ -18,7 +18,16 @@ Migration add-on for [Virtual Media Folders](https://github.com/soderlind/virtua
 
 - WordPress 6.8+
 - PHP 8.3+
-- Virtual Media Folders 2.0.0+
+- [Virtual Media Folders](https://github.com/soderlind/virtual-media-folders) 2.0.0+
+
+## Installation
+
+1. Download [`vmfa-migrate.zip`](https://github.com/soderlind/vmfa-migrate/releases/latest/download/vmfa-migrate.zip)
+2. Upload via `Plugins → Add New → Upload Plugin`
+3. Activate via `WordPress Admin → Plugins`
+
+Plugin [updates are handled automatically](https://github.com/soderlind/wordpress-plugin-github-updater#readme) via GitHub. No need to manually download and install updates.
+
 
 ## How It Works
 
