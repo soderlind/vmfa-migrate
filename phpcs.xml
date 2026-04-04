@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<ruleset name="VMFA Migrate">
+	<description>Custom PHPCS ruleset for VMFA Migrate add-on.</description>
+
+	<!-- Scan only PHP files -->
+	<arg name="extensions" value="php"/>
+	<arg name="colors"/>
+	<arg value="sp"/>
+
+	<!-- Source directories -->
+	<file>./src/php</file>
+	<file>./vmfa-migrate.php</file>
+
+	<!-- Exclude vendor and build directories -->
+	<exclude-pattern>./vendor/*</exclude-pattern>
+	<exclude-pattern>./node_modules/*</exclude-pattern>
+	<exclude-pattern>./build/*</exclude-pattern>
+
+	<!-- WordPress Coding Standards -->
+	<rule ref="WordPress">
+		<!-- Allow short array syntax -->
+		<exclude name="Universal.Arrays.DisallowShortArraySyntax"/>
+		<!-- Allow short ternary -->
+		<exclude name="Universal.Operators.DisallowShortTernary"/>
+		<!-- PSR-4 autoloading requires PascalCase file names -->
+		<exclude name="WordPress.Files.FileName.NotHyphenatedLowercase"/>
+		<exclude name="WordPress.Files.FileName.InvalidClassFileName"/>
+	</rule>
+
+	<!-- WordPress VIP compatibility (non-VIP, but follow best practices) -->
+	<rule ref="WordPress-Extra"/>
+
+	<!-- Text domain -->
+	<rule ref="WordPress.WP.I18n">
+		<properties>
+			<property name="text_domain" type="array">
+				<element value="vmfa-migrate"/>
+			</property>
+		</properties>
+	</rule>
+
+	<!-- Minimum PHP version -->
+	<config name="minimum_php_version" value="8.3"/>
+
+	<!-- Minimum WP version -->
+	<config name="minimum_wp_version" value="6.8"/>
+
+	<!-- Allow direct database queries with appropriate comments -->
+	<rule ref="WordPress.DB.DirectDatabaseQuery">
+		<severity>5</severity>
+	</rule>
+</ruleset>

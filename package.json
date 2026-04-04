@@ -1,0 +1,38 @@
+{
+	"name": "vmfa-migrate",
+	"version": "0.1.0",
+	"description": "Migration add-on for Virtual Media Folders.",
+	"author": "Per Soderlind",
+	"license": "GPL-2.0-or-later",
+	"scripts": {
+		"build": "wp-scripts build src/js/index.js src/wp7-compat.js --output-path=build",
+		"start": "wp-scripts start src/js/index.js src/wp7-compat.js --output-path=build",
+		"lint:js": "wp-scripts lint-js src/js",
+		"lint:css": "wp-scripts lint-style src/css",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"i18n": "npm run i18n:make-pot && npm run i18n:update-po && npm run i18n:make-mo && npm run i18n:make-json && npm run i18n:make-php",
+		"i18n:make-pot": "wp i18n make-pot . languages/vmfa-migrate.pot --exclude=node_modules,vendor,tests,build --domain=vmfa-migrate",
+		"i18n:update-po": "wp i18n update-po languages/vmfa-migrate.pot languages/",
+		"i18n:make-mo": "wp i18n make-mo languages/",
+		"i18n:make-json": "wp i18n make-json languages/ --no-purge --use-map=i18n-map.json",
+		"i18n:make-php": "wp i18n make-php languages/"
+	},
+	"dependencies": {
+		"@wordpress/api-fetch": "^7.39.0",
+		"@wordpress/components": "^32.1.0",
+		"@wordpress/element": "^6.39.0",
+		"@wordpress/i18n": "^6.12.0",
+		"@wordpress/icons": "^11.6.0"
+	},
+	"devDependencies": {
+		"@testing-library/jest-dom": "^6.9.1",
+		"@testing-library/react": "^16.3.2",
+		"@testing-library/user-event": "^14.6.1",
+		"@vitejs/plugin-react": "^5.1.3",
+		"@wordpress/eslint-plugin": "^24.1.0",
+		"@wordpress/scripts": "^31.4.0",
+		"jsdom": "^28.0.0",
+		"vitest": "^4.0.18"
+	}
+}

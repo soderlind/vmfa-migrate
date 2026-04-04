@@ -1,0 +1,6 @@
+{
+	"src/js/components/SourceList.jsx": "vmfa-migrate-admin",
+	"src/js/components/PreviewPanel.jsx": "vmfa-migrate-admin",
+	"src/js/components/MigrationProgress.jsx": "vmfa-migrate-admin",
+	"src/js/components/MigrationDashboard.jsx": "vmfa-migrate-admin"
+}
