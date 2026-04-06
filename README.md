@@ -2,6 +2,8 @@
 
 Migration add-on for [Virtual Media Folders](https://github.com/soderlind/virtual-media-folders). Import folders and file assignments from other media folder plugins.
 
+<img width="100%"  alt="Screenshot 2026-04-06 at 16 17 01" src="https://github.com/user-attachments/assets/55b52380-22fd-419d-a393-70672cfd5905" />
+
 ## Supported Plugins
 
 | Plugin | Storage | Status |
