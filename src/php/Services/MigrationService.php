@@ -12,6 +12,7 @@ namespace VmfaMigrate\Services;
 defined( 'ABSPATH' ) || exit;
 
 use VmfaMigrate\Drivers\DriverInterface;
+use VmfaMigrate\Drivers\TaxonomyAwareDriverInterface;
 
 /**
  * Handles the migration pipeline: preview, batch folder creation, and
@@ -65,8 +66,9 @@ final class MigrationService {
 		}
 
 		return [
-			'folders' => $driver->get_folder_tree(),
-			'stats'   => $driver->get_stats(),
+			'folders'    => $driver->get_folder_tree(),
+			'stats'      => $driver->get_stats(),
+			'taxonomies' => $this->get_driver_taxonomies( $driver ),
 		];
 	}
 
@@ -99,8 +101,9 @@ final class MigrationService {
 			);
 		}
 
-		$batch_size = isset( $options['batch_size'] ) ? absint( $options['batch_size'] ) : 100;
-		$conflict   = isset( $options['conflict_strategy'] ) ? sanitize_key( $options['conflict_strategy'] ) : 'skip';
+		$batch_size           = isset( $options['batch_size'] ) ? absint( $options['batch_size'] ) : 100;
+		$conflict             = isset( $options['conflict_strategy'] ) ? sanitize_key( $options['conflict_strategy'] ) : 'skip';
+		$include_taxonomies   = ! empty( $options['include_taxonomies'] );
 
 		if ( $batch_size < 1 ) {
 			$batch_size = 100;
@@ -114,24 +117,31 @@ final class MigrationService {
 		$folder_map      = $this->create_vmf_folders( $driver, $conflict );
 		$folders_created = count( array_filter( $folder_map, fn( $v ) => $v['created'] ) );
 
+		// Phase 1b: Migrate additional taxonomies (synchronous — typically small).
+		$taxonomy_results = [];
+		if ( $include_taxonomies && $driver instanceof TaxonomyAwareDriverInterface ) {
+			$taxonomy_results = $this->migrate_additional_taxonomies( $driver, $conflict );
+		}
+
 		// Phase 2: Schedule batched attachment assignment.
 		$job_id = wp_generate_uuid4();
 		$stats  = $driver->get_stats();
 
 		$job_data = [
-			'driver_slug'     => $driver_slug,
-			'folder_map'      => $folder_map,
-			'batch_size'      => $batch_size,
-			'conflict'        => $conflict,
-			'total'           => $stats['assignment_count'],
-			'processed'       => 0,
-			'skipped'         => 0,
-			'assigned'        => 0,
-			'errors'          => 0,
-			'status'          => 'running',
-			'folders_created' => $folders_created,
-			'started_at'      => time(),
-			'completed_at'    => null,
+			'driver_slug'       => $driver_slug,
+			'folder_map'        => $folder_map,
+			'batch_size'        => $batch_size,
+			'conflict'          => $conflict,
+			'total'             => $stats['assignment_count'],
+			'processed'         => 0,
+			'skipped'           => 0,
+			'assigned'          => 0,
+			'errors'            => 0,
+			'status'            => 'running',
+			'folders_created'   => $folders_created,
+			'taxonomy_results'  => $taxonomy_results,
+			'started_at'        => time(),
+			'completed_at'      => null,
 		];
 
 		update_option( self::JOB_PREFIX . $job_id, $job_data, false );
@@ -150,8 +160,9 @@ final class MigrationService {
 		}
 
 		return [
-			'job_id'          => $job_id,
-			'folders_created' => $folders_created,
+			'job_id'           => $job_id,
+			'folders_created'  => $folders_created,
+			'taxonomy_results' => $taxonomy_results,
 		];
 	}
 
@@ -265,16 +276,17 @@ final class MigrationService {
 		}
 
 		return [
-			'job_id'          => $job_id,
-			'status'          => $job['status'],
-			'total'           => $job['total'],
-			'processed'       => $job['processed'],
-			'assigned'        => $job['assigned'],
-			'skipped'         => $job['skipped'],
-			'errors'          => $job['errors'],
-			'folders_created' => $job['folders_created'],
-			'started_at'      => $job['started_at'],
-			'completed_at'    => $job['completed_at'],
+			'job_id'           => $job_id,
+			'status'           => $job['status'],
+			'total'            => $job['total'],
+			'processed'        => $job['processed'],
+			'assigned'         => $job['assigned'],
+			'skipped'          => $job['skipped'],
+			'errors'           => $job['errors'],
+			'folders_created'  => $job['folders_created'],
+			'taxonomy_results' => $job['taxonomy_results'] ?? [],
+			'started_at'       => $job['started_at'],
+			'completed_at'     => $job['completed_at'],
 		];
 	}
 
@@ -404,5 +416,188 @@ final class MigrationService {
 		}
 
 		return $folder_map;
+	}
+
+	/**
+	 * Get additional taxonomy info from a driver, if it supports it.
+	 *
+	 * @param DriverInterface $driver Source driver.
+	 * @return array<int, array{slug: string, label: string, hierarchical: bool, term_count: int, assign_count: int}>
+	 */
+	private function get_driver_taxonomies( DriverInterface $driver ): array {
+		if ( $driver instanceof TaxonomyAwareDriverInterface ) {
+			return $driver->get_additional_taxonomies();
+		}
+
+		return [];
+	}
+
+	/**
+	 * Migrate additional taxonomies from a taxonomy-aware driver.
+	 *
+	 * Runs synchronously — taxonomy data is typically small (tens/hundreds of
+	 * terms, not thousands). For each additional taxonomy:
+	 * 1. Ensures the taxonomy is registered (or registers it temporarily).
+	 * 2. Creates terms with hierarchy preserved.
+	 * 3. Assigns attachments to terms.
+	 *
+	 * @param TaxonomyAwareDriverInterface $driver   Source driver.
+	 * @param string                       $conflict Conflict strategy.
+	 * @return array<string, array{terms_created: int, terms_reused: int, assignments: int, errors: int}>
+	 */
+	private function migrate_additional_taxonomies( TaxonomyAwareDriverInterface $driver, string $conflict ): array {
+		$taxonomies = $driver->get_additional_taxonomies();
+		$results    = [];
+
+		foreach ( $taxonomies as $tax_info ) {
+			$taxonomy = $tax_info['slug'];
+			$result   = [
+				'label'         => $tax_info['label'],
+				'hierarchical'  => $tax_info['hierarchical'],
+				'terms_created' => 0,
+				'terms_reused'  => 0,
+				'assignments'   => 0,
+				'errors'        => 0,
+			];
+
+			// Ensure taxonomy is registered for wp_insert_term / wp_set_object_terms.
+			$temp_registered = false;
+			if ( ! taxonomy_exists( $taxonomy ) ) {
+				register_taxonomy(
+					$taxonomy,
+					'attachment',
+					[
+						'hierarchical' => $tax_info['hierarchical'],
+						'public'       => false,
+						'show_ui'      => true,
+						'labels'       => [ 'name' => $tax_info['label'] ],
+					]
+				);
+				$temp_registered = true;
+			}
+
+			// Create terms with hierarchy (topological sort).
+			$source_terms = $driver->get_taxonomy_terms( $taxonomy );
+			$term_map     = $this->create_taxonomy_terms( $source_terms, $taxonomy, $conflict );
+
+			$result['terms_created'] = count( array_filter( $term_map, fn( $v ) => $v['created'] ) );
+			$result['terms_reused']  = count( $term_map ) - $result['terms_created'];
+
+			// Assign attachments to terms.
+			foreach ( $driver->get_taxonomy_assignments( $taxonomy ) as $assignment ) {
+				$source_term_id = $assignment['term_id'];
+				$attach_id      = $assignment['attachment_id'];
+				$wp_term_id     = $term_map[ $source_term_id ]['wp_term_id'] ?? null;
+
+				if ( null === $wp_term_id ) {
+					++$result['errors'];
+					continue;
+				}
+
+				$set_result = wp_set_object_terms( $attach_id, [ $wp_term_id ], $taxonomy, true );
+
+				if ( is_wp_error( $set_result ) ) {
+					++$result['errors'];
+				} else {
+					++$result['assignments'];
+				}
+			}
+
+			// If we temporarily registered the taxonomy, keep it — it now has data.
+			// It will persist in wp_term_taxonomy and be accessible on next load
+			// if another plugin or custom code registers it.
+
+			$results[ $taxonomy ] = $result;
+		}
+
+		return $results;
+	}
+
+	/**
+	 * Create taxonomy terms mirroring a source term tree.
+	 *
+	 * @param array<int, array{id: int, name: string, slug: string, parent_id: int}> $source_terms Source terms.
+	 * @param string                                                                  $taxonomy     Target taxonomy slug.
+	 * @param string                                                                  $conflict     Conflict strategy.
+	 * @return array<int, array{wp_term_id: int, created: bool}>
+	 */
+	private function create_taxonomy_terms( array $source_terms, string $taxonomy, string $conflict ): array {
+		$term_map = [];
+
+		$by_id = [];
+		foreach ( $source_terms as $term ) {
+			$by_id[ $term['id'] ] = $term;
+		}
+
+		$processed = [];
+		$queue     = array_keys( $by_id );
+
+		$max_iterations = count( $queue ) * 2;
+		$iteration      = 0;
+
+		while ( ! empty( $queue ) && $iteration < $max_iterations ) {
+			++$iteration;
+			$id   = array_shift( $queue );
+			$term = $by_id[ $id ];
+
+			if ( $term['parent_id'] > 0 && ! isset( $processed[ $term['parent_id'] ] ) ) {
+				$queue[] = $id;
+				continue;
+			}
+
+			$wp_parent = 0;
+			if ( $term['parent_id'] > 0 && isset( $term_map[ $term['parent_id'] ] ) ) {
+				$wp_parent = $term_map[ $term['parent_id'] ]['wp_term_id'];
+			}
+
+			$existing = get_term_by( 'name', $term['name'], $taxonomy );
+
+			if ( $existing && $existing->parent === $wp_parent ) {
+				if ( 'overwrite' === $conflict ) {
+					$dedup_name = $term['name'] . ' (migrated)';
+					$result     = wp_insert_term( $dedup_name, $taxonomy, [ 'parent' => $wp_parent ] );
+
+					if ( ! is_wp_error( $result ) ) {
+						$term_map[ $id ] = [
+							'wp_term_id' => $result['term_id'],
+							'created'    => true,
+						];
+					}
+				} else {
+					$term_map[ $id ] = [
+						'wp_term_id' => $existing->term_id,
+						'created'    => false,
+					];
+				}
+			} else {
+				$result = wp_insert_term(
+					$term['name'],
+					$taxonomy,
+					[
+						'parent' => $wp_parent,
+						'slug'   => $term['slug'],
+					]
+				);
+
+				if ( is_wp_error( $result ) ) {
+					if ( 'term_exists' === $result->get_error_code() ) {
+						$existing_id     = (int) $result->get_error_data();
+						$term_map[ $id ] = [
+							'wp_term_id' => $existing_id,
+							'created'    => false,
+						];
+					}
+				} else {
+					$term_map[ $id ] = [
+						'wp_term_id' => $result['term_id'],
+						'created'    => true,
+					];
+				}
+			}
+
+			$processed[ $id ] = true;
+		}
+
+		return $term_map;
 	}
 }

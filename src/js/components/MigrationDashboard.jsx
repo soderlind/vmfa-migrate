@@ -33,6 +33,7 @@ export default function MigrationDashboard() {
 	const [preview, setPreview] = useState(null);
 	const [isLoadingPreview, setIsLoadingPreview] = useState(false);
 	const [conflictStrategy, setConflictStrategy] = useState('skip');
+	const [includeTaxonomies, setIncludeTaxonomies] = useState(false);
 	const [jobId, setJobId] = useState(null);
 	const [isMigrating, setIsMigrating] = useState(false);
 
@@ -89,6 +90,7 @@ export default function MigrationDashboard() {
 				method: 'POST',
 				data: {
 					conflict_strategy: conflictStrategy,
+					include_taxonomies: includeTaxonomies,
 					batch_size: 100,
 				},
 			});
@@ -109,7 +111,7 @@ export default function MigrationDashboard() {
 		} finally {
 			setIsMigrating(false);
 		}
-	}, [selectedSource, conflictStrategy]);
+	}, [selectedSource, conflictStrategy, includeTaxonomies]);
 
 	if (isLoading) {
 		return (
@@ -167,7 +169,11 @@ export default function MigrationDashboard() {
 						<CardBody>
 							{isLoadingPreview && <Spinner />}
 							{!isLoadingPreview && preview && (
-								<PreviewPanel preview={preview} />
+								<PreviewPanel
+									preview={preview}
+									includeTaxonomies={includeTaxonomies}
+									onIncludeTaxonomiesChange={setIncludeTaxonomies}
+								/>
 							)}
 						</CardBody>
 					</Card>
@@ -214,7 +220,6 @@ export default function MigrationDashboard() {
 									'vmfa-migrate'
 								)}
 							/>
-
 							<div style={{ marginTop: '16px' }}>
 								<Button
 									variant="primary"

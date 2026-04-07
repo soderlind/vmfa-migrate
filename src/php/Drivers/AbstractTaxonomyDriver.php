@@ -134,9 +134,68 @@ abstract class AbstractTaxonomyDriver implements DriverInterface {
 	 * @return array<int, array{id: int, name: string, slug: string, parent_id: int}>
 	 */
 	private function get_folder_tree_via_api(): array {
+		return $this->get_terms_for_taxonomy_via_api( $this->get_taxonomy() );
+	}
+
+	/**
+	 * Get folder tree via direct database queries (when taxonomy is not registered).
+	 *
+	 * @return array<int, array{id: int, name: string, slug: string, parent_id: int}>
+	 */
+	private function get_folder_tree_via_db(): array {
+		return $this->get_terms_for_taxonomy_via_db( $this->get_taxonomy() );
+	}
+
+	/**
+	 * Check if a given taxonomy has data in the database.
+	 *
+	 * Works even when the taxonomy is not registered (plugin deactivated).
+	 *
+	 * @param string $taxonomy Taxonomy slug.
+	 * @return bool
+	 */
+	protected function taxonomy_has_data( string $taxonomy ): bool {
+		if ( taxonomy_exists( $taxonomy ) ) {
+			return true;
+		}
+
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$count = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->term_taxonomy} WHERE taxonomy = %s",
+				$taxonomy
+			)
+		);
+
+		return $count > 0;
+	}
+
+	/**
+	 * Get terms for any taxonomy, with API or DB fallback.
+	 *
+	 * @param string $taxonomy Taxonomy slug.
+	 * @return array<int, array{id: int, name: string, slug: string, parent_id: int}>
+	 */
+	protected function get_terms_for_taxonomy( string $taxonomy ): array {
+		if ( taxonomy_exists( $taxonomy ) ) {
+			return $this->get_terms_for_taxonomy_via_api( $taxonomy );
+		}
+
+		return $this->get_terms_for_taxonomy_via_db( $taxonomy );
+	}
+
+	/**
+	 * Get terms for a taxonomy via WP API.
+	 *
+	 * @param string $taxonomy Taxonomy slug.
+	 * @return array<int, array{id: int, name: string, slug: string, parent_id: int}>
+	 */
+	protected function get_terms_for_taxonomy_via_api( string $taxonomy ): array {
 		$terms = get_terms(
 			[
-				'taxonomy'   => $this->get_taxonomy(),
+				'taxonomy'   => $taxonomy,
 				'hide_empty' => false,
 				'orderby'    => 'name',
 				'order'      => 'ASC',
@@ -147,9 +206,9 @@ abstract class AbstractTaxonomyDriver implements DriverInterface {
 			return [];
 		}
 
-		$folders = [];
+		$result = [];
 		foreach ( $terms as $term ) {
-			$folders[] = [
+			$result[] = [
 				'id'        => $term->term_id,
 				'name'      => $term->name,
 				'slug'      => $term->slug,
@@ -157,15 +216,16 @@ abstract class AbstractTaxonomyDriver implements DriverInterface {
 			];
 		}
 
-		return $folders;
+		return $result;
 	}
 
 	/**
-	 * Get folder tree via direct database queries (when taxonomy is not registered).
+	 * Get terms for a taxonomy via direct DB queries.
 	 *
+	 * @param string $taxonomy Taxonomy slug.
 	 * @return array<int, array{id: int, name: string, slug: string, parent_id: int}>
 	 */
-	private function get_folder_tree_via_db(): array {
+	protected function get_terms_for_taxonomy_via_db( string $taxonomy ): array {
 		global $wpdb;
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -176,14 +236,14 @@ abstract class AbstractTaxonomyDriver implements DriverInterface {
 				 INNER JOIN {$wpdb->term_taxonomy} tt ON t.term_id = tt.term_id
 				 WHERE tt.taxonomy = %s
 				 ORDER BY t.name ASC",
-				$this->get_taxonomy()
+				$taxonomy
 			),
 			ARRAY_A
 		);
 
-		$folders = [];
+		$result = [];
 		foreach ( $rows as $row ) {
-			$folders[] = [
+			$result[] = [
 				'id'        => (int) $row['term_id'],
 				'name'      => $row['name'],
 				'slug'      => $row['slug'],
@@ -191,6 +251,74 @@ abstract class AbstractTaxonomyDriver implements DriverInterface {
 			];
 		}
 
-		return $folders;
+		return $result;
+	}
+
+	/**
+	 * Count terms for a taxonomy.
+	 *
+	 * @param string $taxonomy Taxonomy slug.
+	 * @return int
+	 */
+	protected function count_taxonomy_terms( string $taxonomy ): int {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->term_taxonomy} WHERE taxonomy = %s",
+				$taxonomy
+			)
+		);
+	}
+
+	/**
+	 * Count attachment-term assignments for a taxonomy.
+	 *
+	 * @param string $taxonomy Taxonomy slug.
+	 * @return int
+	 */
+	protected function count_taxonomy_assignments( string $taxonomy ): int {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		return (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->term_relationships} tr
+				 INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+				 WHERE tt.taxonomy = %s",
+				$taxonomy
+			)
+		);
+	}
+
+	/**
+	 * Iterate over attachment-term assignments for a taxonomy.
+	 *
+	 * @param string $taxonomy Taxonomy slug.
+	 * @return \Generator<int, array{attachment_id: int, term_id: int}>
+	 */
+	protected function iterate_taxonomy_assignments( string $taxonomy ): \Generator {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$results = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT tr.object_id AS attachment_id, tt.term_id
+				 FROM {$wpdb->term_relationships} tr
+				 INNER JOIN {$wpdb->term_taxonomy} tt ON tr.term_taxonomy_id = tt.term_taxonomy_id
+				 WHERE tt.taxonomy = %s
+				 ORDER BY tr.object_id ASC",
+				$taxonomy
+			),
+			ARRAY_A
+		);
+
+		foreach ( $results as $row ) {
+			yield [
+				'attachment_id' => (int) $row['attachment_id'],
+				'term_id'       => (int) $row['term_id'],
+			];
+		}
 	}
 }

@@ -122,14 +122,33 @@ final class MigrateCommand {
 
 		if ( 'tree' === $format ) {
 			$this->print_tree( $result['folders'] );
-			return;
+		} else {
+			WP_CLI\Utils\format_items(
+				'table',
+				$result['folders'],
+				[ 'id', 'name', 'slug', 'parent_id' ]
+			);
 		}
 
-		WP_CLI\Utils\format_items(
-			'table',
-			$result['folders'],
-			[ 'id', 'name', 'slug', 'parent_id' ]
-		);
+		// Show additional taxonomies if available.
+		if ( ! empty( $result['taxonomies'] ) ) {
+			WP_CLI::log( '' );
+			WP_CLI::log( __( 'Additional taxonomies available for migration:', 'vmfa-migrate' ) );
+			WP_CLI\Utils\format_items(
+				'table',
+				$result['taxonomies'],
+				[ 'slug', 'label', 'hierarchical', 'term_count', 'assign_count' ]
+			);
+			WP_CLI::log(
+				__( 'Use --include-taxonomies with the run command to migrate these.', 'vmfa-migrate' )
+			);
+			WP_CLI::log(
+				__( 'Terms are stored as WordPress taxonomies on each attachment.', 'vmfa-migrate' )
+			);
+			WP_CLI::log(
+				__( 'Access them with get_the_terms() or wp_get_object_terms().', 'vmfa-migrate' )
+			);
+		}
 	}
 
 	/**
@@ -159,6 +178,10 @@ final class MigrateCommand {
 	 *   - overwrite
 	 * ---
 	 *
+	 * [--include-taxonomies]
+	 * : Also migrate additional taxonomies (e.g. media tags) from plugins
+	 *   that support them (Enhanced Media Library, Media Library Assistant).
+	 *
 	 * @param array $args       Positional arguments.
 	 * @param array $assoc_args Associative arguments.
 	 * @return void
@@ -175,8 +198,9 @@ final class MigrateCommand {
 		$migration = Plugin::get_instance()->get_migration();
 
 		$options = [
-			'batch_size'        => isset( $assoc_args['batch-size'] ) ? absint( $assoc_args['batch-size'] ) : 100,
-			'conflict_strategy' => $assoc_args['conflict'] ?? 'skip',
+			'batch_size'         => isset( $assoc_args['batch-size'] ) ? absint( $assoc_args['batch-size'] ) : 100,
+			'conflict_strategy'  => $assoc_args['conflict'] ?? 'skip',
+			'include_taxonomies' => ! empty( $assoc_args['include-taxonomies'] ),
 		];
 
 		WP_CLI::log( __( 'Starting migration…', 'vmfa-migrate' ) );
@@ -194,6 +218,27 @@ final class MigrateCommand {
 				$result['folders_created']
 			)
 		);
+
+		// Show taxonomy migration results if any.
+		if ( ! empty( $result['taxonomy_results'] ) ) {
+			WP_CLI::log( '' );
+			WP_CLI::log( __( 'Taxonomy migration results (stored as WordPress taxonomies on each attachment):', 'vmfa-migrate' ) );
+			foreach ( $result['taxonomy_results'] as $slug => $tax_result ) {
+				WP_CLI::log(
+					sprintf(
+						/* translators: 1: taxonomy label, 2: terms created, 3: terms reused, 4: assignments, 5: errors */
+						'  %1$s: %2$d terms created, %3$d reused, %4$d assignments, %5$d errors',
+						$tax_result['label'],
+						$tax_result['terms_created'],
+						$tax_result['terms_reused'],
+						$tax_result['assignments'],
+						$tax_result['errors']
+					)
+				);
+			}
+			WP_CLI::log( '' );
+			WP_CLI::log( __( 'Access migrated terms with: get_the_terms( $attachment_id, "taxonomy_slug" )', 'vmfa-migrate' ) );
+		}
 
 		// Poll job progress.
 		$job_id = $result['job_id'];

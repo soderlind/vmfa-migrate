@@ -70,7 +70,59 @@ wp vmfa-migrate run enhanced-media-library --dry-run
 
 # With options
 wp vmfa-migrate run filebird --batch-size=200 --conflict=merge
+
+# Include additional taxonomies (EML / MLA only)
+wp vmfa-migrate run enhanced-media-library --include-taxonomies
 ```
+
+### Taxonomy Migration
+
+Enhanced Media Library and Media Library Assistant support additional taxonomies (e.g. media tags) beyond their primary folder taxonomy. When you enable **Include taxonomies** (UI checkbox or `--include-taxonomies` in WP-CLI), these are migrated as standard WordPress taxonomies on each attachment.
+
+Virtual Media Folders does not display these taxonomies in its sidebar. They are stored so the data is not lost. You can access them with native WordPress functions.
+
+**Register the taxonomy** (e.g. in your theme's `functions.php` or a custom plugin):
+
+```php
+add_action( 'init', function () {
+    register_taxonomy( 'media_tag', 'attachment', [
+        'label'        => __( 'Media Tags' ),
+        'public'       => true,
+        'hierarchical' => false,
+        'show_ui'      => true,
+        'show_in_rest' => true,
+    ] );
+} );
+```
+
+**Get terms for an attachment:**
+
+```php
+$terms = get_the_terms( $attachment_id, 'media_tag' );
+if ( $terms && ! is_wp_error( $terms ) ) {
+    foreach ( $terms as $term ) {
+        echo esc_html( $term->name );
+    }
+}
+```
+
+**Query attachments by term:**
+
+```php
+$attachments = get_posts( [
+    'post_type'   => 'attachment',
+    'post_status' => 'inherit',
+    'tax_query'   => [
+        [
+            'taxonomy' => 'media_tag',
+            'field'    => 'slug',
+            'terms'    => 'nature',
+        ],
+    ],
+] );
+```
+
+Replace `media_tag` with the actual taxonomy slug shown during migration (e.g. `attachment_tag` for Media Library Assistant).
 
 ### REST API
 

@@ -115,6 +115,10 @@ final class MigrationController extends WP_REST_Controller {
 						'enum'              => [ 'skip', 'merge', 'overwrite' ],
 						'sanitize_callback' => 'sanitize_key',
 					],
+					'include_taxonomies' => [
+						'type'    => 'boolean',
+						'default' => false,
+					],
 				],
 			]
 		);
@@ -200,8 +204,9 @@ final class MigrationController extends WP_REST_Controller {
 	public function start_migration( WP_REST_Request $request ): WP_REST_Response|\WP_Error {
 		$slug    = $request->get_param( 'slug' );
 		$options = [
-			'batch_size'        => $request->get_param( 'batch_size' ),
-			'conflict_strategy' => $request->get_param( 'conflict_strategy' ),
+			'batch_size'         => $request->get_param( 'batch_size' ),
+			'conflict_strategy'  => $request->get_param( 'conflict_strategy' ),
+			'include_taxonomies' => $request->get_param( 'include_taxonomies' ),
 		];
 
 		$result = $this->migration->start( $slug, $options );
