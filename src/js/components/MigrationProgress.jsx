@@ -4,7 +4,7 @@
  * @package
  */
 
-import { useState, useEffect, useRef } from '@wordpress/element';
+import { useState, useEffect, useRef, Fragment } from '@wordpress/element';
 import { Spinner, Notice } from '@wordpress/components';
 import { __ } from '@wordpress/i18n';
 import apiFetch from '@wordpress/api-fetch';
@@ -86,10 +86,15 @@ export default function MigrationProgress({ jobId }) {
 				{__('assignments processed', 'vmfa-migrate')}
 			</p>
 
-			<table className="widefat" style={{ maxWidth: '400px' }}>
+			<table className="widefat" style={{ maxWidth: '500px' }}>
 				<tbody>
 					<tr>
-						<td>{__('Folders created', 'vmfa-migrate')}</td>
+						<th colSpan="2">
+							{__('Folders', 'vmfa-migrate')}
+						</th>
+					</tr>
+					<tr>
+						<td>{__('Created', 'vmfa-migrate')}</td>
 						<td>{job.folders_created}</td>
 					</tr>
 					<tr>
@@ -104,6 +109,45 @@ export default function MigrationProgress({ jobId }) {
 						<td>{__('Errors', 'vmfa-migrate')}</td>
 						<td>{job.errors}</td>
 					</tr>
+					{job.taxonomy_results &&
+						Object.entries(job.taxonomy_results).map(
+							([slug, result]) => (
+								<Fragment key={slug}>
+									<tr>
+										<th colSpan="2">
+											{result.label}
+										</th>
+									</tr>
+									<tr>
+										<td>
+											{__('Terms created', 'vmfa-migrate')}
+										</td>
+										<td>{result.terms_created}</td>
+									</tr>
+									<tr>
+										<td>
+											{__('Terms reused', 'vmfa-migrate')}
+										</td>
+										<td>{result.terms_reused}</td>
+									</tr>
+									<tr>
+										<td>
+											{__(
+												'Assignments',
+												'vmfa-migrate'
+											)}
+										</td>
+										<td>{result.assignments}</td>
+									</tr>
+									<tr>
+										<td>
+											{__('Errors', 'vmfa-migrate')}
+										</td>
+										<td>{result.errors}</td>
+									</tr>
+								</Fragment>
+							)
+						)}
 				</tbody>
 			</table>
 

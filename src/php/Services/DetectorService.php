@@ -18,6 +18,7 @@ use VmfaMigrate\Drivers\FileBirdDriver;
 use VmfaMigrate\Drivers\HappyFilesDriver;
 use VmfaMigrate\Drivers\MediaLibraryAssistantDriver;
 use VmfaMigrate\Drivers\RealMediaLibraryDriver;
+use VmfaMigrate\Drivers\TaxonomyAwareDriverInterface;
 use VmfaMigrate\Drivers\WpMediaFolderDriver;
 
 /**
@@ -80,10 +81,11 @@ final class DetectorService {
 
 			$stats     = $driver->get_stats();
 			$sources[] = [
-				'slug'             => $driver::slug(),
-				'label'            => $driver::label(),
-				'folder_count'     => $stats['folder_count'],
-				'assignment_count' => $stats['assignment_count'],
+				'slug'               => $driver::slug(),
+				'label'              => $driver::label(),
+				'folder_count'       => $stats['folder_count'],
+				'assignment_count'   => $stats['assignment_count'],
+				'has_taxonomies'     => $driver instanceof TaxonomyAwareDriverInterface && ! empty( $driver->get_additional_taxonomies() ),
 			];
 		}
 
