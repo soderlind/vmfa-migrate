@@ -3,7 +3,7 @@
  * Plugin Name:       Virtual Media Folders - Migrate
  * Plugin URI:        https://github.com/soderlind/vmfa-migrate
  * Description:       Migration add-on for Virtual Media Folders. Import folders and assignments from Enhanced Media Library, FileBird, Real Media Library, HappyFiles, WP Media Folder, Media Library Assistant, and CatFolders.
- * Version:           0.3.0
+ * Version:           0.3.1
  * Requires at least: 6.8
  * Requires PHP:      8.3
  * Requires Plugins:  virtual-media-folders
