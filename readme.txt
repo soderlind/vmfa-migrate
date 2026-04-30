@@ -2,9 +2,9 @@
 Contributors: suspended
 Tags: media, folders, migration, import
 Requires at least: 6.8
-Tested up to: 6.8
+Tested up to: 7.0
 Requires PHP: 8.3
-Stable tag: 0.3.0
+Stable tag: 0.3.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -82,6 +82,9 @@ Replace `media_tag` with the actual taxonomy slug shown during migration
 4. Go to Media → Folder Settings → Migration.
 
 == Changelog ==
+
+= 0.3.1 =
+* Changed: Updated "Tested up to" to WordPress 7.0
 
 = 0.3.0 =
 * Added: Taxonomy migration for Enhanced Media Library and Media Library Assistant.
