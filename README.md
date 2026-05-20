@@ -24,6 +24,10 @@ Migration add-on for [Virtual Media Folders](https://github.com/soderlind/virtua
 
 ## Installation
 
+Recommended: Use the [Add-On Manager](https://github.com/soderlind/vmfa) to install the add-on.
+
+Manual installation:
+
 1. Download [`vmfa-migrate.zip`](https://github.com/soderlind/vmfa-migrate/releases/latest/download/vmfa-migrate.zip)
 2. Upload via `Plugins → Add New → Upload Plugin`
 3. Activate via `WordPress Admin → Plugins`
