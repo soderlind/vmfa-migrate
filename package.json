@@ -33,6 +33,6 @@
 		"@wordpress/eslint-plugin": "^24.1.0",
 		"@wordpress/scripts": "^32.6.0",
 		"jsdom": "^28.0.0",
-		"vitest": "^4.0.18"
+		"vitest": "^4.1.10"
 	}
 }
