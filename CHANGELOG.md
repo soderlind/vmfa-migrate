@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.2] - 2026-07-12
+
+### Security
+
+- Resolved the majority of Dependabot alerts by updating build/test dependencies (`npm audit fix`, `@wordpress/scripts` 31 → 32, `@wordpress/components` 32 → 36). Remaining alerts are dev-only transitive dependencies pinned by `@wordpress/scripts`.
+
+### Changed
+
+- Added grouped `.github/dependabot.yml` config (npm/composer/github-actions) to consolidate future dependency update PRs.
+- Synced `VMFA_MIGRATE_VERSION` constant with the plugin header version.
+
 ## [0.3.1] - 2026-04-30
 
 ### Changed
