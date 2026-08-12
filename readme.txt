@@ -2,9 +2,9 @@
 Contributors: suspended
 Tags: media, folders, migration, import
 Requires at least: 6.8
-Tested up to: 7.0
+Tested up to: 7.1
 Requires PHP: 8.3
-Stable tag: 0.3.2
+Stable tag: 0.3.3
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -82,6 +82,10 @@ Replace `media_tag` with the actual taxonomy slug shown during migration
 4. Go to Media → Folder Settings → Migration.
 
 == Changelog ==
+
+= 0.3.3 =
+* Fixed: Prevent a fatal error when the "Virtual Media Folders" parent plugin is missing or older than 2.0.0; show an admin notice instead.
+* Changed: Tested up to WordPress 7.1.
 
 = 0.3.2 =
 * Security: Resolved the majority of Dependabot alerts by updating build/test dependencies (`@wordpress/scripts` 31 → 32, `@wordpress/components` 32 → 36). Remaining alerts are dev-only transitive dependencies.
